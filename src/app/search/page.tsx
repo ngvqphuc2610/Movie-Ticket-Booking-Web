@@ -200,7 +200,7 @@ export default function SearchPage({ searchParams }: SearchPageProps) {
                                         title={movie.title}
                                         poster={movie.poster_image}
                                         trailerUrl=""
-                                        status={movie.status as "coming soon" | "now showing" | "ended"}
+                                        status={movie.status as "coming soon" | "now showing" | "expired"}
                                         releaseDate={movie.release_date}
                                         duration={movie.duration}
                                         director={movie.director}

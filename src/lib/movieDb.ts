@@ -24,12 +24,13 @@ export interface Movie {
     banner_image: string | null;
     trailer_url: string | null;
     age_restriction: string | null;
-    status: 'coming soon' | 'now showing' | 'ended';
+    status: 'coming soon' | 'now showing' | 'expired';
     genres?: string[];
 }
 
 export async function getNowShowingMovies(): Promise<Movie[]> {
     try {
+        await cleanupExpiredMovies();
         const movies = await query<Movie[]>(`
             SELECT m.*,
                 GROUP_CONCAT(DISTINCT g.genre_name ORDER BY g.genre_name SEPARATOR ', ') as genres
@@ -37,6 +38,7 @@ export async function getNowShowingMovies(): Promise<Movie[]> {
             LEFT JOIN genre_movies gm ON m.id_movie = gm.id_movie
             LEFT JOIN genre g ON gm.id_genre = g.id_genre
             WHERE m.status = 'now showing'
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
             GROUP BY m.id_movie
             ORDER BY m.release_date DESC
         `);
@@ -50,6 +52,7 @@ export async function getNowShowingMovies(): Promise<Movie[]> {
 
 export async function getComingSoonMovies(): Promise<Movie[]> {
     try {
+        await cleanupExpiredMovies();
         const movies = await query<Movie[]>(`
             SELECT m.*,
                 GROUP_CONCAT(DISTINCT g.genre_name ORDER BY g.genre_name SEPARATOR ', ') as genres
@@ -57,6 +60,7 @@ export async function getComingSoonMovies(): Promise<Movie[]> {
             LEFT JOIN genre_movies gm ON m.id_movie = gm.id_movie
             LEFT JOIN genre g ON gm.id_genre = g.id_genre
             WHERE m.status = 'coming soon'
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
             GROUP BY m.id_movie
             ORDER BY m.release_date ASC
         `);
@@ -67,9 +71,9 @@ export async function getComingSoonMovies(): Promise<Movie[]> {
         return [];
     }
 }
-
 export async function getMovieById(id: number | string): Promise<Movie | null> {
     try {
+        await cleanupExpiredMovies();
         const movies = await query<Movie[]>(`
             SELECT m.*,
                 GROUP_CONCAT(DISTINCT g.genre_name ORDER BY g.genre_name SEPARATOR ', ') as genres
@@ -77,6 +81,7 @@ export async function getMovieById(id: number | string): Promise<Movie | null> {
             LEFT JOIN genre_movies gm ON m.id_movie = gm.id_movie
             LEFT JOIN genre g ON gm.id_genre = g.id_genre
             WHERE m.id_movie = ?
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
             GROUP BY m.id_movie
         `, [id]);
 
@@ -95,6 +100,7 @@ export async function getMovieById(id: number | string): Promise<Movie | null> {
 export async function getPopularMovies(): Promise<Movie[]> {
     try {
         // Lấy các phim phổ biến dựa trên số lượng showtime
+        await cleanupExpiredMovies();
         const movies = await query<Movie[]>(`
             SELECT m.*,
                 COUNT(s.id_showtime) as showtime_count,
@@ -104,6 +110,7 @@ export async function getPopularMovies(): Promise<Movie[]> {
             LEFT JOIN genre_movies gm ON m.id_movie = gm.id_movie
             LEFT JOIN genre g ON gm.id_genre = g.id_genre
             WHERE m.status = 'now showing'
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
             GROUP BY m.id_movie
             ORDER BY showtime_count DESC, m.release_date DESC
             LIMIT 10
@@ -115,15 +122,17 @@ export async function getPopularMovies(): Promise<Movie[]> {
         return [];
     }
 }
-
 export async function getAllMovies(): Promise<Movie[]> {
     try {
+        await cleanupExpiredMovies();
         const movies = await query<Movie[]>(`
             SELECT m.*,
                 GROUP_CONCAT(DISTINCT g.genre_name ORDER BY g.genre_name SEPARATOR ', ') as genres
             FROM movies m
             LEFT JOIN genre_movies gm ON m.id_movie = gm.id_movie
             LEFT JOIN genre g ON gm.id_genre = g.id_genre
+            WHERE m.status != 'expired'
+              AND (m.end_date IS NULL OR m.end_date >= CURRENT_DATE)
             GROUP BY m.id_movie
             ORDER BY m.release_date DESC
         `);
@@ -363,6 +372,101 @@ export async function deleteMovie(id: number): Promise<{ success: boolean; messa
     }
 }
 
+// Remove movies whose end date has passed
+export async function cleanupExpiredMovies(): Promise<{ success: boolean; deletedCount: number }> {
+    try {
+        const expiredMovies = await query<{ id_movie: number }[]>(
+            `SELECT id_movie FROM movies WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE`
+        );
+
+        let deletedCount = 0;
+        for (const { id_movie } of expiredMovies) {
+            try {
+                // Kiểm tra xem có bookings nào liên quan đến showtimes của movie này không
+                const bookingsCheck = await query(`
+                    SELECT COUNT(*) as count 
+                    FROM bookings b 
+                    JOIN showtimes s ON b.id_showtime = s.id_showtime 
+                    WHERE s.id_movie = ?
+                `, [id_movie]);
+                
+                const bookingCount = Array.isArray(bookingsCheck) && bookingsCheck.length > 0 
+                    ? bookingsCheck[0].count 
+                    : 0;
+
+                if (bookingCount > 0) {
+                    // Nếu có bookings, chỉ cập nhật status thay vì xóa
+                    await query('UPDATE movies SET status = ? WHERE id_movie = ?', ['expired', id_movie]);
+                    console.log(`Movie ${id_movie} marked as expired (has ${bookingCount} bookings)`);
+                    continue;
+                }
+
+                // Xóa các bản ghi liên quan theo thứ tự đúng để tránh lỗi foreign key
+                // 1. Xóa detail_booking trước (nếu có)
+                await query(`
+                    DELETE db FROM detail_booking db
+                    JOIN bookings b ON db.id_booking = b.id_booking
+                    JOIN showtimes s ON b.id_showtime = s.id_showtime
+                    WHERE s.id_movie = ?
+                `, [id_movie]);
+
+                // 2. Xóa order_product liên quan đến bookings của movie này (nếu có)
+                await query(`
+                    DELETE op FROM order_product op
+                    JOIN bookings b ON op.id_booking = b.id_booking
+                    JOIN showtimes s ON b.id_showtime = s.id_showtime
+                    WHERE s.id_movie = ?
+                `, [id_movie]);
+
+                // 3. Xóa payments liên quan (nếu có)
+                await query(`
+                    DELETE p FROM payments p
+                    JOIN bookings b ON p.id_booking = b.id_booking
+                    JOIN showtimes s ON b.id_showtime = s.id_showtime
+                    WHERE s.id_movie = ?
+                `, [id_movie]);
+
+                // 4. Xóa bookings liên quan đến showtimes của movie này
+                await query(`
+                    DELETE b FROM bookings b
+                    JOIN showtimes s ON b.id_showtime = s.id_showtime
+                    WHERE s.id_movie = ?
+                `, [id_movie]);
+
+                // 5. Xóa showtimes của movie
+                await query('DELETE FROM showtimes WHERE id_movie = ?', [id_movie]);
+
+                // 6. Xóa các liên kết với thể loại
+                await query('DELETE FROM genre_movies WHERE id_movie = ?', [id_movie]);
+
+                // 7. Xóa các banner liên quan nếu có
+                await query('DELETE FROM homepage_banners WHERE id_movie = ?', [id_movie]);
+
+                // 8. Cuối cùng xóa movie
+                const result = await query('DELETE FROM movies WHERE id_movie = ?', [id_movie]);
+                deletedCount += (result as any).affectedRows || 0;
+                
+                console.log(`Successfully deleted expired movie ${id_movie}`);
+            } catch (movieError: any) {
+                console.error(`Error deleting movie ${id_movie}:`, movieError.message);
+                // Nếu không thể xóa, đánh dấu là expired
+                try {
+                    await query('UPDATE movies SET status = ? WHERE id_movie = ?', ['expired', id_movie]);
+                    console.log(`Movie ${id_movie} marked as expired due to deletion error`);
+                } catch (updateError: any) {
+                    console.error(`Error updating movie ${id_movie} status:`, updateError.message);
+                }
+            }
+        }
+
+        console.log(`Cleanup completed. Deleted ${deletedCount} expired movies.`);
+        return { success: true, deletedCount };
+    } catch (error: any) {
+        console.error("Error in cleanupExpiredMovies:", error.message);
+        return { success: false, deletedCount: 0 };
+    }
+}
+
 // Lấy danh sách thể loại phim
 export async function getGenres(): Promise<{ id: number, name: string }[]> {
     try {
@@ -403,7 +507,7 @@ function formatMovies(movies: any[]): Movie[] {
             banner_image: movie.banner_image || null,
             trailer_url: movie.trailer_url || null,
             age_restriction: movie.age_restriction || null,
-            status: (movie.status || 'coming soon') as 'coming soon' | 'now showing' | 'ended',
+            status: (movie.status || 'coming soon') as 'coming soon' | 'now showing' | 'expired',
             genres: genresList
         };
     });

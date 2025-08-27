@@ -23,7 +23,7 @@ interface DatabaseMovie {
     banner_image: string | null;
     trailer_url: string | null;
     age_restriction: string | null;
-    status: 'coming soon' | 'now showing' | 'ended';
+    status: 'coming soon' | 'now showing' | 'expired';
     genres?: string[];
 }
 

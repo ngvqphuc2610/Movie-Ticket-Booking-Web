@@ -459,7 +459,7 @@ export default function MovieForm({ movie, genres }: MovieFormProps) {
                                 >
                                     <option value="coming soon">Sắp chiếu</option>
                                     <option value="now showing">Đang chiếu</option>
-                                    <option value="ended">Đã kết thúc</option>
+                                    <option value="expired">Đã kết thúc</option>
                                 </select>
                             </div>
                         </div>

@@ -29,16 +29,20 @@ const MovieCarouselInner = ({ title, movies, className = '', showNavigation = tr
   const { t } = useTranslation();
   const { swiperRef, setCurrentSlide, setTotalSlides } = useSwiper();
 
+  const validMovies = movies.filter(
+    (movie) => !movie.endDate || new Date(movie.endDate) >= new Date()
+  );
+
   const handleSlideChange = (swiper: SwiperType) => {
     setCurrentSlide(swiper.activeIndex);
   };
 
   const onSwiper = (swiper: SwiperType) => {
     swiperRef.current = swiper;
-    setTotalSlides(movies.length);
+    setTotalSlides(validMovies.length);
   };
   // Kiểm tra trạng thái của phim
-  const isComingSoon = movies.length > 0 && movies[0].status === 'coming soon';
+  const isComingSoon = validMovies.length > 0 && validMovies[0].status === 'coming soon';
   const viewAllLink = isComingSoon ? '/movie/upcoming' : '/movie/showing';
 
   return (
@@ -66,7 +70,7 @@ const MovieCarouselInner = ({ title, movies, className = '', showNavigation = tr
         navigation={false}
         pagination={false}
       >
-        {movies.map((movie) => (
+        {validMovies.map((movie) => (
           <SwiperSlide key={movie.id}>
             <div className="hover:text-[#EBDB40] transition-transform">
               <MovieCard {...movie} />

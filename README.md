@@ -42,3 +42,9 @@ Sử dụng qrcode để xuất ra qr form thanh toán
         3. User click link → Kiểm tra token hợp lệ & chưa hết hạn  
         4. Đặt lại mật khẩu → Xóa token khỏi DB
         ```
+
+        Cấu hình các Movie 
+        Status : coming soon , now showing and expired
+        + coming soon : release_date > now
+        + now showing : release_date < now < end_date
+        + expired : end_date < now

@@ -15,7 +15,7 @@ export interface Movie {
   poster_image?: string;
   trailer_url?: string;
   age_restriction?: string;
-  status: 'now showing' | 'coming soon' | 'ended';
+  status: 'now showing' | 'coming soon' | 'expired';
 }
 
 export interface MovieFilters {

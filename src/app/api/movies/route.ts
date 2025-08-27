@@ -4,7 +4,7 @@ import { createSuccessResponse, handleApiError } from '@/lib/apiUtils';
 /**
  * GET /api/movies - Lấy tất cả phim
  * Query params:
- * - status: 'now showing' | 'coming soon' | 'ended' (optional)
+ * - status: 'now showing' | 'coming soon' | 'expired' (optional)
  * - limit: number (optional)
  */
 export async function GET(request: NextRequest) {

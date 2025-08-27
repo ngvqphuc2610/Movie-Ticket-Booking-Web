@@ -192,7 +192,7 @@ export default function AdminMoviesPage() {
                             <option value="all">Tất cả</option>
                             <option value="now showing">Đang chiếu</option>
                             <option value="coming soon">Sắp chiếu</option>
-                            <option value="ended">Đã kết thúc</option>
+                            <option value="expired">Đã kết thúc</option>
                         </select>
                     </div>
                     <div>
