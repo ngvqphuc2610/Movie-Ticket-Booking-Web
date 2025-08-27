@@ -32,7 +32,7 @@ export interface MovieProps {
   banner_image?: string;
   trailerUrl?: string;
   ageRestriction?: string;
-  status?: 'coming soon' | 'now showing' | 'ended';
+  status?: 'coming soon' | 'now showing' | 'expired';
   genre?: string;
   genres?: string[];
   isComingSoon?: boolean;

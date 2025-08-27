@@ -265,11 +265,11 @@ CREATE TABLE `movies` (
   `banner_image` varchar(255) DEFAULT NULL,
   `trailer_url` varchar(255) DEFAULT NULL,
   `age_restriction` varchar(10) DEFAULT NULL,
-  `status` varchar(20) DEFAULT 'coming soon',
+  `status` enum('coming soon','now showing','expired') DEFAULT 'coming soon',
   PRIMARY KEY (`id_movie`),
   CONSTRAINT `chk_enddate` CHECK (((`end_date` is null) or (`end_date` >= `release_date`))),
   CONSTRAINT `chk_movie_duration` CHECK ((`duration` > 0)),
-  CONSTRAINT `chk_movie_status` CHECK ((`status` in (_utf8mb4'coming soon',_utf8mb4'now showing',_utf8mb4'ended')))
+  CONSTRAINT `chk_movie_status` CHECK ((`status` in (_utf8mb4'coming soon',_utf8mb4'now showing',_utf8mb4'expired')))
 ) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
