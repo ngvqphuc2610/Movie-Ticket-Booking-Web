@@ -1,3 +1,5 @@
+This is a movie ticket booking website, cloned based on the Cinestar website.
+The model follows the structure of React and Next.js.✌️
 npm i
 
 npm run dev trên môi trường dev
