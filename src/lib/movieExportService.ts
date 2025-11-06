@@ -1,3 +1,9 @@
+// Export to JSON
+export const exportToJson = (movies: ExportMovie[], filename = 'movies_export') => {
+    const jsonStr = JSON.stringify(movies, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    saveAs(blob, `${filename}_${new Date().toISOString().split('T')[0]}.json`);
+};
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, HeadingLevel, AlignmentType } from 'docx';
@@ -185,7 +191,7 @@ const getStatusText = (status: string): string => {
 
 // Export with filters
 export const exportMoviesWithFilters = async (
-    exportType: 'excel' | 'docx',
+    exportType: 'excel' | 'docx' | 'json',
     filters: {
         status?: string;
         search?: string;
@@ -227,8 +233,10 @@ export const exportMoviesWithFilters = async (
         // Export theo type
         if (exportType === 'excel') {
             exportToExcel(movies, filename);
-        } else {
+        } else if (exportType === 'docx') {
             await exportToDocx(movies, filename);
+        } else if (exportType === 'json') {
+            exportToJson(movies, filename);
         }
 
         return {

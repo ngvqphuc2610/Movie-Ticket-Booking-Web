@@ -132,7 +132,7 @@ export default function AdminMoviesPage() {
     };
 
     // Export functions
-    const handleExport = async (type: 'excel' | 'docx') => {
+    const handleExport = async (type: 'excel' | 'docx' | 'json') => {
         setIsExporting(true);
         setExportStatus(`Đang xuất dữ liệu ra ${type.toUpperCase()}...`);
 
@@ -161,6 +161,7 @@ export default function AdminMoviesPage() {
 
     const handleExportExcel = () => handleExport('excel');
     const handleExportDocx = () => handleExport('docx');
+    const handleExportJson = () => handleExport('json');
 
     // Handle filter changes
     const handleFilterChange = (key: string, value: string) => {
@@ -189,8 +190,8 @@ export default function AdminMoviesPage() {
                             onClick={handleExportExcel}
                             disabled={isExporting}
                             className={`px-4 py-2 rounded text-white ${isExporting
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-green-600 hover:bg-green-700'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700'
                                 }`}
                             title="Xuất ra file Excel"
                         >
@@ -200,12 +201,23 @@ export default function AdminMoviesPage() {
                             onClick={handleExportDocx}
                             disabled={isExporting}
                             className={`px-4 py-2 rounded text-white ${isExporting
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700'
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700'
                                 }`}
                             title="Xuất ra file Word"
                         >
                             📄 Word
+                        </button>
+                        <button
+                            onClick={handleExportJson}
+                            disabled={isExporting}
+                            className={`px-4 py-2 rounded text-white ${isExporting
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-orange-600 hover:bg-orange-700'
+                                }`}
+                            title="Xuất ra file JSON"
+                        >
+                            🟧 JSON
                         </button>
                     </div>
 
@@ -230,10 +242,10 @@ export default function AdminMoviesPage() {
             {/* Export Status */}
             {exportStatus && (
                 <div className={`border-l-4 p-4 mb-6 ${exportStatus.includes('Lỗi')
-                        ? 'bg-red-100 border-red-500 text-red-700'
-                        : exportStatus.includes('thành công')
-                            ? 'bg-green-100 border-green-500 text-green-700'
-                            : 'bg-blue-100 border-blue-500 text-blue-700'
+                    ? 'bg-red-100 border-red-500 text-red-700'
+                    : exportStatus.includes('thành công')
+                        ? 'bg-green-100 border-green-500 text-green-700'
+                        : 'bg-blue-100 border-blue-500 text-blue-700'
                     }`}>
                     <p>{exportStatus}</p>
                 </div>
