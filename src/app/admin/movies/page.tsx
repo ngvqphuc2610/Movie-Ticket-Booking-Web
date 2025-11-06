@@ -5,6 +5,7 @@ import axios from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Movie, MovieFilters, MoviePagination } from '@/types/movie';
+import { exportMoviesWithFilters } from '@/lib/movieExportService';
 
 export default function AdminMoviesPage() {
     const [movies, setMovies] = useState<Movie[]>([]);
@@ -17,6 +18,8 @@ export default function AdminMoviesPage() {
     const [loading, setLoading] = useState(true);
     const [syncingMovies, setSyncingMovies] = useState(false);
     const [syncStatus, setSyncStatus] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportStatus, setExportStatus] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState<MovieFilters>({
         status: 'all',
@@ -128,6 +131,38 @@ export default function AdminMoviesPage() {
         }
     };
 
+    // Export functions
+    const handleExport = async (type: 'excel' | 'docx' | 'json') => {
+        setIsExporting(true);
+        setExportStatus(`Đang xuất dữ liệu ra ${type.toUpperCase()}...`);
+
+        try {
+            const result = await exportMoviesWithFilters(type, {
+                status: filters.status,
+                search: filters.search,
+                includeGenres: true
+            });
+
+            setExportStatus(result.message);
+
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                setExportStatus(null);
+            }, 3000);
+        } catch (error: any) {
+            setExportStatus(`Lỗi: ${error.message}`);
+            setTimeout(() => {
+                setExportStatus(null);
+            }, 5000);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleExportExcel = () => handleExport('excel');
+    const handleExportDocx = () => handleExport('docx');
+    const handleExportJson = () => handleExport('json');
+
     // Handle filter changes
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -149,6 +184,43 @@ export default function AdminMoviesPage() {
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-dark">Quản lý phim</h1>
                 <div className="flex gap-4">
+                    {/* Export Buttons */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleExportExcel}
+                            disabled={isExporting}
+                            className={`px-4 py-2 rounded text-white ${isExporting
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700'
+                                }`}
+                            title="Xuất ra file Excel"
+                        >
+                            📊 Excel
+                        </button>
+                        <button
+                            onClick={handleExportDocx}
+                            disabled={isExporting}
+                            className={`px-4 py-2 rounded text-white ${isExporting
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
+                            title="Xuất ra file Word"
+                        >
+                            📄 Word
+                        </button>
+                        <button
+                            onClick={handleExportJson}
+                            disabled={isExporting}
+                            className={`px-4 py-2 rounded text-white ${isExporting
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-orange-600 hover:bg-orange-700'
+                                }`}
+                            title="Xuất ra file JSON"
+                        >
+                            🟧 JSON
+                        </button>
+                    </div>
+
                     <button
                         onClick={handleSyncMovies}
                         disabled={syncingMovies}
@@ -166,6 +238,18 @@ export default function AdminMoviesPage() {
                     </Link>
                 </div>
             </div>
+
+            {/* Export Status */}
+            {exportStatus && (
+                <div className={`border-l-4 p-4 mb-6 ${exportStatus.includes('Lỗi')
+                    ? 'bg-red-100 border-red-500 text-red-700'
+                    : exportStatus.includes('thành công')
+                        ? 'bg-green-100 border-green-500 text-green-700'
+                        : 'bg-blue-100 border-blue-500 text-blue-700'
+                    }`}>
+                    <p>{exportStatus}</p>
+                </div>
+            )}
 
             {syncStatus && (
                 <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6">

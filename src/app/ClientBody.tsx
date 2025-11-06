@@ -1,20 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import clsx from "clsx";
+import { type ReactNode, useEffect } from "react";
 
-export default function ClientBody({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // Remove any extension-added classes during hydration
+interface ClientBodyProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export default function ClientBody({ children, className }: ClientBodyProps) {
+  const appliedClassName = clsx("antialiased", className).trim();
+
   useEffect(() => {
-    // This runs only on the client after hydration
-    document.body.className = "antialiased";
-  }, []);
+    document.body.className = appliedClassName;
+
+    document.body
+      .getAttributeNames()
+      .filter((name) => name.startsWith("__processed_"))
+      .forEach((name) => document.body.removeAttribute(name));
+  }, [appliedClassName]);
 
   return (
-    <body className="antialiased" suppressHydrationWarning>
+    <body className={appliedClassName} suppressHydrationWarning>
       {children}
     </body>
   );

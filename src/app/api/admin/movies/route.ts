@@ -10,6 +10,8 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '10');
         const status = searchParams.get('status');
         const search = searchParams.get('search');
+        const isExport = searchParams.get('export') === 'true';
+        const includeGenres = searchParams.get('include_genres') === 'true';
 
         const offset = (page - 1) * limit;
 
@@ -35,32 +37,76 @@ export async function GET(req: NextRequest) {
         const countResult = await query(countQuery, queryParams);
         const total = (countResult as any[])[0]?.total || 0;
 
-        // Get movies with pagination
-        const moviesQuery = `
-            SELECT
-                id_movie,
-                title,
-                original_title,
-                director,
-                actors,
-                duration,
-                release_date,
-                end_date,
-                language,
-                subtitle,
-                country,
-                description,
-                poster_image,
-                trailer_url,
-                age_restriction,
-                status
-            FROM movies
-            ${whereClause}
-            ORDER BY release_date DESC
-            LIMIT ${limit} OFFSET ${offset}
-        `;
+        // Get movies query - modified for export
+        let moviesQuery;
+        let moviesQueryParams = [...queryParams];
 
-        const movies = await query(moviesQuery, queryParams);
+        if (isExport) {
+            // For export, get all data without pagination and include genres
+            moviesQuery = `
+                SELECT
+                    m.id_movie,
+                    m.title,
+                    m.original_title,
+                    m.director,
+                    m.actors,
+                    m.duration,
+                    m.release_date,
+                    m.end_date,
+                    m.language,
+                    m.subtitle,
+                    m.country,
+                    m.description,
+                    m.poster_image,
+                    m.trailer_url,
+                    m.age_restriction,
+                    m.status${includeGenres ? ',\n                    GROUP_CONCAT(g.genre_name SEPARATOR ", ") as genres' : ''}
+                FROM movies m
+                ${includeGenres ? `
+                LEFT JOIN genre_movies gm ON m.id_movie = gm.id_movie
+                LEFT JOIN genre g ON gm.id_genre = g.id_genre` : ''}
+                ${whereClause}
+                ${includeGenres ? 'GROUP BY m.id_movie' : ''}
+                ORDER BY m.status ASC, m.release_date DESC
+            `;
+        } else {
+            // Normal pagination query
+            moviesQuery = `
+                SELECT
+                    id_movie,
+                    title,
+                    original_title,
+                    director,
+                    actors,
+                    duration,
+                    release_date,
+                    end_date,
+                    language,
+                    subtitle,
+                    country,
+                    description,
+                    poster_image,
+                    trailer_url,
+                    age_restriction,
+                    status
+                FROM movies
+                ${whereClause}
+                ORDER BY release_date DESC
+                LIMIT ${limit} OFFSET ${offset}
+            `;
+        }
+
+        const movies = await query(moviesQuery, moviesQueryParams);
+
+        if (isExport) {
+            return NextResponse.json({
+                success: true,
+                data: {
+                    movies,
+                    total: movies.length
+                }
+            });
+        }
 
         return NextResponse.json({
             success: true,

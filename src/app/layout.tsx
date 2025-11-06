@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "@/styles/globals.css";
+import { Inter } from "next/font/google";
+import ClientBody from "./ClientBody";
 import I18nProvider from "./i18n/Provider";
-import Providers from "./i18n/Provider";
 import LanguageProvider from "@/components/providers/LanguageProvider";
 import { GlobalTimerProvider } from "@/contexts/GlobalTimerContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+
+const inter = Inter({
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   icons: {
@@ -22,21 +26,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body>
-
+      <ClientBody className={inter.className}>
         <I18nProvider>
-          <Providers>
-            <LanguageProvider>
-              <GlobalTimerProvider>
-                <AuthProvider>
-                  {children}
-                </AuthProvider>
-              </GlobalTimerProvider>
-            </LanguageProvider>
-          </Providers>
+          <LanguageProvider>
+            <GlobalTimerProvider>
+              <AuthProvider>
+                {children}
+              </AuthProvider>
+            </GlobalTimerProvider>
+          </LanguageProvider>
         </I18nProvider>
-
-      </body>
+      </ClientBody>
     </html>
   );
 }
